@@ -22,8 +22,7 @@ import {
 import {
     Language,
     MangaPlusResponse,
-    TitleDetailView,
-    getLangPopup
+    TitleDetailView
 } from './MangaPlusHelper'
 
 import {
@@ -64,11 +63,7 @@ export class MangaPlus implements SearchResultsProviding, MangaProviding, Chapte
             return storedToken
         }
 
-        const sessionToken = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-            const r = Math.random() * 16 | 0
-            const v = c === 'x' ? r : (r & 0x3 | 0x8)
-            return v.toString(16)
-        })
+        const sessionToken = crypto.randomUUID()
         await this.stateManager.store('sessionToken', sessionToken)
         this.cachedSessionToken = sessionToken
         return sessionToken
@@ -134,64 +129,39 @@ export class MangaPlus implements SearchResultsProviding, MangaProviding, Chapte
     getMangaShareUrl(mangaId: string): string { return `${BASE_URL}/titles/${mangaId}` }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
-        try {
-            const request = App.createRequest({
-                url: `${API_URL}/title_detailV3?title_id=${mangaId}&format=json`,
-                method: 'GET'
-            })
+        const request = App.createRequest({
+            url: `${API_URL}/title_detailV3?title_id=${mangaId}&format=json`,
+            method: 'GET'
+        })
 
-            const response = await this.requestManager.schedule(request, 1)
-            const result = TitleDetailView.fromJson(response.data as string)
+        const response = await this.requestManager.schedule(request, 1)
+        const result = TitleDetailView.fromJson(response.data as string)
 
-            return result.toSourceManga()
-        } catch (error) {
-            console.log(`Failed to get manga details for ${mangaId}: ${error}`)
-            return App.createSourceManga({
-                id: mangaId,
-                mangaInfo: App.createMangaInfo({
-                    image: 'imageMangaId=' + mangaId,
-                    titles: ['Manga Unavailable'],
-                    author: 'Unknown',
-                    artist: 'Unknown',
-                    desc: error instanceof Error ? error.message : 'This manga is unavailable in your region or could not be found.',
-                    status: 'Ongoing'
-                })
-            })
-        }
+        return result.toSourceManga()
     }
 
     private async getThumbnailUrl(mangaId: string): Promise<string> {
-        try {
-            const request = App.createRequest({
-                url: `${API_URL}/title_detailV3?title_id=${mangaId}&format=json`,
-                method: 'GET'
-            })
+        const request = App.createRequest({
+            url: `${API_URL}/title_detailV3?title_id=${mangaId}&format=json`,
+            method: 'GET'
+        })
 
-            const response = await this.requestManager.schedule(request, 1)
-            const result = TitleDetailView.fromJson(response.data as string)
-            
-            return result.title?.portraitImageUrl ?? ''
-        } catch (error) {
-            console.log(`Failed to get thumbnail for ${mangaId}: ${error}`)
-            return ''
-        }
+        const response = await this.requestManager.schedule(request, 1)
+        const result = TitleDetailView.fromJson(response.data as string)
+        
+        return result.title?.portraitImageUrl ?? ''
     }
 
     async getChapters(mangaId: string): Promise<Chapter[]> {
-        try {
-            const request = App.createRequest({
-                url: `${API_URL}/title_detailV3?title_id=${mangaId}&format=json`,
-                method: 'GET'
-            })
+        const request = App.createRequest({
+            url: `${API_URL}/title_detailV3?title_id=${mangaId}&format=json`,
+            method: 'GET'
+        })
 
-            const response = await this.requestManager.schedule(request, 1)
-            const result = TitleDetailView.fromJson(response.data as string)
+        const response = await this.requestManager.schedule(request, 1)
+        const result = TitleDetailView.fromJson(response.data as string)
 
-            return [...(result.firstChapterList ?? []), ...(result.lastChapterList ?? [])].reverse().filter(chapter => !chapter.isExpired).map(chapter => chapter.toSChapter())
-        } catch (error) {
-            console.log(`Failed to get chapters for ${mangaId}: ${error}`)
-            return []
-        }
+        return [...(result.firstChapterList ?? []), ...(result.lastChapterList ?? [])].reverse().filter(chapter => !chapter.isExpired).map(chapter => chapter.toSChapter())
     }
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
@@ -204,7 +174,7 @@ export class MangaPlus implements SearchResultsProviding, MangaProviding, Chapte
         const result = JSON.parse(response.data as string) as MangaPlusResponse
 
         if (result.success === undefined) {
-            throw new Error(getLangPopup(result.error, Language.ENGLISH)?.body ?? 'Unknown error')
+            throw new Error(result.error?.langPopup(Language.ENGLISH)?.body ?? 'Unknown error')
         }
 
         const pages = result.success.mangaViewer?.pages
@@ -230,7 +200,7 @@ export class MangaPlus implements SearchResultsProviding, MangaProviding, Chapte
         const result = JSON.parse(response.data as string) as MangaPlusResponse
 
         if (result.success === undefined) {
-            throw new Error(getLangPopup(result.error, Language.ENGLISH)?.body ?? 'Unknown error')
+            throw new Error(result.error?.langPopup(Language.ENGLISH)?.body ?? 'Unknown error')
         }
 
         const languages = await getLanguages(this.stateManager)
@@ -270,7 +240,7 @@ export class MangaPlus implements SearchResultsProviding, MangaProviding, Chapte
         const result = JSON.parse(response.data as string) as MangaPlusResponse
 
         if (result.success === undefined) {
-            throw new Error(getLangPopup(result.error, Language.ENGLISH)?.body ?? 'Unknown error')
+            throw new Error(result.error?.langPopup(Language.ENGLISH)?.body ?? 'Unknown error')
         }
 
         const languages = await getLanguages(this.stateManager)
@@ -315,7 +285,7 @@ export class MangaPlus implements SearchResultsProviding, MangaProviding, Chapte
         const result: MangaPlusResponse = JSON.parse(response.data as string)
 
         if (result.success === undefined) {
-            throw new Error(getLangPopup(result.error, langCode)?.body ?? 'Unknown error')
+            throw new Error(result.error?.langPopup(langCode)?.body ?? 'Unknown error')
         }
 
         const languages = await getLanguages(this.stateManager)
@@ -417,7 +387,7 @@ export class MangaPlus implements SearchResultsProviding, MangaProviding, Chapte
         const result = JSON.parse(response.data as string) as MangaPlusResponse
 
         if (result.success === undefined) {
-            throw new Error(getLangPopup(result.error, Language.ENGLISH)?.body ?? 'Unknown error')
+            throw new Error(result.error?.langPopup(Language.ENGLISH)?.body ?? 'Unknown error')
         }
 
         const ltitle = query.title?.toLowerCase() ?? ''

@@ -56,18 +56,13 @@ interface UpdatedTitle {
     title: Title;
 }
 
-export class ErrorResult {
+class ErrorResult {
     popups: Popup[] = []
 
     langPopup(lang: Language): Popup | null {
         return this.popups.find(popup => popup.language === lang) || null
     }
 }
-
-export function getLangPopup(error: any, lang: Language): Popup | null {
-    return error?.popups?.find((popup: any) => popup.language === lang) || null
-}
-
 
 class Popup {
     subject: string
@@ -169,13 +164,7 @@ export class TitleDetailView {
     static fromJson(str: string): TitleDetailView {
         const bopp = JSON.parse(str) as MangaPlusResponse
 
-        if (bopp.success === undefined) {
-            throw new Error(getLangPopup(bopp.error, Language.ENGLISH)?.body ?? 'Unknown error')
-        }
-
-        if (bopp.success.titleDetailView === undefined) {
-            throw new Error('Cannot find manga')
-        }
+        if (bopp.success?.titleDetailView === undefined) throw Error('Cannot find manga')
 
         const json = bopp.success.titleDetailView
 
